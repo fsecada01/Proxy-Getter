@@ -6,6 +6,7 @@ from sqlmodel import Session
 
 from backend.proxies.consts import sqlite_address
 from backend.proxies.models import ProxyUrl
+from backend.utils import set_event_loop, windows_sys_event_loop_check
 
 
 async def initialize():
@@ -25,4 +26,7 @@ async def initialize():
 
 
 if __name__ == "__main__":
+    windows_sys_event_loop_check()
+    set_event_loop()
+
     asyncio.run(initialize())

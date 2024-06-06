@@ -9,7 +9,7 @@ from backend.logging import logger
 from backend.proxies.consts import sqlite_address
 from backend.proxies.models import ProxyUrl
 from backend.proxies.utils import test_proxy_url
-from backend.utils import chunked
+from backend.utils import chunked, set_event_loop, windows_sys_event_loop_check
 
 
 async def check_url(url_model: ProxyUrl):
@@ -53,7 +53,6 @@ async def proxy_job(proxy_list: list[ProxyUrl], chunk_size: int = 250):
 
 
 if __name__ == "__main__":
-    import sys
 
     ProxyUrl.set_session(Session(create_engine(sqlite_address)))
 
@@ -61,8 +60,8 @@ if __name__ == "__main__":
         ProxyUrl.validated == False, ProxyUrl.searched == False  # noqa E712
     ).all()
 
-    if sys.platform == "win32":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    windows_sys_event_loop_check()
+    set_event_loop()
 
     results = asyncio.run(proxy_job(proxy_list=urls_to_test))
 
