@@ -5,7 +5,7 @@ from pprint import pformat
 from sqlalchemy import create_engine
 from sqlmodel import Session
 
-from backend.logging import logger
+from backend import logger
 from backend.proxies.consts import sqlite_address
 from backend.proxies.models import ProxyUrl
 from backend.proxies.utils import test_proxy_url

@@ -5,7 +5,7 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy_mixins import AllFeaturesMixin
 from sqlmodel import Field, SQLModel, create_engine, select
 
-from backend.logging import logger
+from backend import logger
 from backend.proxies.consts import sqlite_address
 from backend.utils import chunked
 
