@@ -1,13 +1,13 @@
 from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any, Literal
 
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy_mixins import AllFeaturesMixin
-from sqlmodel import Field, SQLModel, create_engine, select
+from sqlmodel import Field, SQLModel, select
 
 from backend import logger
-from backend.proxies.consts import sqlite_address
 from backend.utils import chunked
 
 
@@ -44,6 +44,15 @@ class CustomAllFeaturesMixin(AllFeaturesMixin):
         return cls
 
 
+proxy_type_enums = StrEnum(
+    "ProxyTypeEnums", {x.upper(): x for x in ("http", "https", "sock")}
+)
+
+anon_enums = StrEnum(
+    "AnonymityEnums", {x.upper(): x for x in ("anm", "hia", "noa")}
+)
+
+
 class ProxyUrl(CustomAllFeaturesMixin, SQLModel, table=True):
     __tablename__ = "proxy_url"
     __table_args__ = (
@@ -53,8 +62,9 @@ class ProxyUrl(CustomAllFeaturesMixin, SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     url: str
-    proxy_type: Literal["http", "https", "sock"]
-    anonymity: Literal["ANM", "HIA", "NOA"]
+    proxy_type: proxy_type_enums
+    anonymity: anon_enums
+    country_code: str
     searched: bool = Field(default=False)
     date_searched: datetime | None
     validated: bool = Field(default=False)
@@ -91,7 +101,12 @@ class ProxyList(SQLModel, table=False):
             ProxyUrl
         """
         data = self.model_dump(
-            include={"proxy_address_port", "proxy_type", "anonymity"}
+            include={
+                "proxy_address_port",
+                "proxy_type",
+                "anonymity",
+                "country_city_region",
+            }
         )
 
         data["url"] = data.pop("proxy_address_port")
@@ -102,11 +117,9 @@ class ProxyList(SQLModel, table=False):
         else:
             data["proxy_type"] = "http"
 
+        data["anonymity"] = data.pop("anonymity").lower()
+        data["country_code"] = data.pop("country_city_region").split("\n")[0]
+
         instance = ProxyUrl(**data)
 
         return instance
-
-
-if __name__ == "__main__":
-    engine = create_engine(sqlite_address)
-    ProxyUrl.__table__.create(engine)
