@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any, Literal
 
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy.dialects.sqlite import insert
@@ -15,7 +16,7 @@ class CustomAllFeaturesMixin(AllFeaturesMixin):
     __repr__ = AllFeaturesMixin.__repr__
 
     @classmethod
-    def bulk_create(cls, objs: list["ProxyUrl"], batch_size: int = 100):
+    def bulk_create(cls, objs: list[Any], batch_size: int = 100):
         for chunk in chunked(objs, batch_size):
             stmnt = insert(cls).values([url.dict() for url in chunk])
 
@@ -52,11 +53,58 @@ class ProxyUrl(CustomAllFeaturesMixin, SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     url: str
+    proxy_type: Literal["http", "https", "sock"]
+    anonymity: Literal["ANM", "HIA", "NOA"]
     searched: bool = Field(default=False)
     date_searched: datetime | None
     validated: bool = Field(default=False)
     date_created: datetime = Field(default=datetime.now(UTC))
     last_validated: datetime | None
+
+
+class ProxyList(SQLModel, table=False):
+    proxy_address_port: str = Field(..., alias="Proxy address:port")
+    proxy_type: Literal[
+        "HTTP",
+        "HTTP\n(ApacheTS)",
+        "HTTP\n(Mikrotik)",
+        "HTTP\n(Squid)",
+        "HTTP\n(Tinyproxy)",
+        "HTTP\nS",
+        "HTTP\nS\n(Mikrotik)",
+        "HTTP\nS\n(Squid)",
+        "SOCKS5",
+    ] = Field(..., alias="Proxy type")
+    anonymity: Literal["ANM", "HIA", "NOA"] = Field(..., alias="Anonymity*")
+    country_city_region: str = Field(..., alias="Country (city/region)")
+    hostname_org: str = Field(..., alias="Hostname/ORG")
+    latency: float = Field(..., alias="Latency**")
+    speed: Literal[""] = Field(..., alias="Speed***")
+    uptime: Literal[""] = Field(..., alias="Uptime")
+    check_date_gmt03: str = Field(..., alias="Check date (GMT+03)")
+
+    def get_proxy_url_instance(self):
+        """
+        Utility function to convert ProxyList instance into ProxyUrl instance.
+
+        Returns:
+            ProxyUrl
+        """
+        data = self.model_dump(
+            include={"proxy_address_port", "proxy_type", "anonymity"}
+        )
+
+        data["url"] = data.pop("proxy_address_port")
+        if "sock" in data.get("proxy_type").lower():
+            data["proxy_type"] = "sock"
+        elif "http\ns" in data.get("proxy_type").lower():
+            data["proxy_type"] = "https"
+        else:
+            data["proxy_type"] = "http"
+
+        instance = ProxyUrl(**data)
+
+        return instance
 
 
 if __name__ == "__main__":

@@ -17,6 +17,14 @@ async def get_req_client(proxy_mounts: dict[str, HTTPTransport] | None = None):
 
 
 async def test_proxy_url(url: str):
+    """
+
+    Args:
+        url: str
+
+    Returns:
+
+    """
     proxy_url = f"http://{url}"
     proxy_mounts = {
         f"{x}://": httpx.HTTPTransport(proxy=proxy_url)

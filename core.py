@@ -13,6 +13,14 @@ from backend.utils import chunked, set_event_loop, windows_sys_event_loop_check
 
 
 async def check_url(url_model: ProxyUrl):
+    """
+
+    Args:
+        url_model:
+
+    Returns:
+
+    """
     logger.info(f"Checking URL {url_model.url} now.")
     date_now = datetime.now(UTC)
     validated_url = await test_proxy_url(url_model.url)
@@ -31,6 +39,15 @@ async def check_url(url_model: ProxyUrl):
 
 
 async def proxy_job(proxy_list: list[ProxyUrl], chunk_size: int = 250):
+    """
+
+    Args:
+        proxy_list:
+        chunk_size:
+
+    Returns:
+
+    """
     return_models = []
 
     for i, chunk in enumerate(chunked(proxy_list, 250)):
@@ -53,11 +70,11 @@ async def proxy_job(proxy_list: list[ProxyUrl], chunk_size: int = 250):
 
 
 if __name__ == "__main__":
-
     ProxyUrl.set_session(Session(create_engine(sqlite_address)))
 
     urls_to_test = ProxyUrl.query.filter(
-        ProxyUrl.validated == False, ProxyUrl.searched == False  # noqa E712
+        ProxyUrl.validated == False,  # noqa E712
+        ProxyUrl.searched == False,  # noqa E712
     ).all()
 
     windows_sys_event_loop_check()
