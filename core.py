@@ -1,68 +1,123 @@
 import asyncio
-from datetime import UTC, datetime
-from pprint import pformat
+from typing import Any
 
-from sqlalchemy import create_engine
-from sqlmodel import Session
+import httpx
+from sqlalchemy import Row, update
+from sqlmodel import col, select
 
-from backend import logger
-from backend.proxies.consts import sqlite_address
+from backend.logging import logger
+from backend.proxies.db import session_maker
 from backend.proxies.models import ProxyUrl
-from backend.proxies.utils import test_proxy_url
-from backend.utils import chunked, set_event_loop, windows_sys_event_loop_check
+from backend.utils import set_event_loop, windows_sys_event_loop_check
 
 
-async def check_url(url_model: ProxyUrl):
-    logger.info(f"Checking URL {url_model.url} now.")
-    date_now = datetime.now(UTC)
-    validated_url = await test_proxy_url(url_model.url)
-    kwargs = {
-        "searched": True,
-        "date_searched": date_now,
-        "commit": False,
-        "id": url_model.id,
-        "url": url_model.url,
-    }
-    if url_model.url == validated_url:
-        kwargs.update({"validated": True, "last_validated": date_now})
+async def get_proxy_list(unvalidated: bool = True) -> list[Row]:
+    """
 
-    url_model.update(**kwargs)
-    return url_model
+    Args:
+        unvalidated: bool = True
+
+    Returns:
+        Scalars
+
+    """
+    stmnt = select(ProxyUrl.url, ProxyUrl.proxy_type)
+    if unvalidated:
+        stmnt = stmnt.where(ProxyUrl.validated == False)  # noqa
+
+    with session_maker() as session:
+        results = session.exec(stmnt)
+        rows = results.all()
+
+    return rows
 
 
-async def proxy_job(proxy_list: list[ProxyUrl], chunk_size: int = 250):
-    return_models = []
+async def update_proxy_urls(urls: list[str], values: dict[str, str | Any]):
+    """
 
-    for i, chunk in enumerate(chunked(proxy_list, 250)):
-        logger.info(f"Starting Chunk {i} with {len(chunk)} results.")
+    Args:
+        values: dict[str, str|Any]
+        urls: list[str]
+    """
+    stmnt = (
+        update(ProxyUrl)
+        .where(col(ProxyUrl.url).in_(urls))
+        .values(**values)
+        .returning(ProxyUrl)
+    )
 
-        tasks = [asyncio.ensure_future(check_url(url)) for url in chunk]
+    with session_maker() as session:
+        results = session.exec(stmnt)
+        rows = results.all()
+        # session.add_all(rows)
+        session.commit()
 
-        results = await asyncio.gather(*tasks)
+    return rows if rows else None
 
-        model_insts = [x for x in results if x is not None]
 
-        if model_insts:
-            ProxyUrl.bulk_create(
-                objs=model_insts, batch_size=chunk_size
-            )  # noqa
+async def check_proxy_urls(unvalidated: bool = True):
+    """
+    Function to check for all unvalidated proxies
+    """
+    rows = await get_proxy_list(unvalidated=unvalidated)
 
-            return_models.extend(model_insts)
+    proxy_urls = [f"{row.proxy_type.value}://{row.url}" for row in rows]
 
-    return return_models
+    def _make_request(url: str, proxy_url: str):
+        return_obj = None
+        logger.info(
+            f"Going to test proxy address {proxy_url} against URL {url} "
+            f"now."
+        )
+        try:
+            proxies = {"any://": httpx.HTTPTransport(proxy=proxy_url)}
+            client = httpx.Client(
+                mounts=proxies,
+                verify=False if "https" not in proxy_url else True,
+            )
+            r = client.head(
+                url=url,
+                timeout=60.0,
+                follow_redirects=True,
+            )
+            if r.status_code == 200:
+                return_obj = proxy_url
+
+        except Exception as e:
+            logger.debug(
+                f"There was an error when making a HEAD request. See here: {type(e), e, e.args}"
+            )
+
+        return return_obj
+
+    url = "https://www.google.com"
+    # url = "https://www.yahoo.com"
+
+    windows_sys_event_loop_check()
+    loop = asyncio.get_running_loop()
+
+    tasks = list(
+        map(
+            lambda proxy: loop.run_in_executor(None, _make_request, url, proxy),
+            proxy_urls,
+        )
+    )
+
+    searched_urls = [row.url for row in rows]
+
+    await update_proxy_urls(urls=searched_urls, values={"searched": True})
+
+    proxy_urls = await asyncio.gather(*tasks)
+
+    urls = [x.split("//")[1] for x in proxy_urls if x]
+
+    rows = await update_proxy_urls(urls=urls, values={"validated": True})
+
+    return rows
 
 
 if __name__ == "__main__":
-
-    ProxyUrl.set_session(Session(create_engine(sqlite_address)))
-
-    urls_to_test = ProxyUrl.query.filter(
-        ProxyUrl.validated == False, ProxyUrl.searched == False  # noqa E712
-    ).all()
-
     windows_sys_event_loop_check()
     set_event_loop()
 
-    results = asyncio.run(proxy_job(proxy_list=urls_to_test))
-
-    print(pformat(results))
+    asyncio.run(check_proxy_urls())
