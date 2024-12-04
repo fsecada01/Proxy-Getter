@@ -2,12 +2,12 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import PrimaryKeyConstraint, UniqueConstraint
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy_mixins import AllFeaturesMixin
 from sqlmodel import Field, SQLModel, select
 
-from backend import logger
+from backend.logging import logger
 from backend.utils import chunked
 
 
@@ -45,7 +45,7 @@ class CustomAllFeaturesMixin(AllFeaturesMixin):
 
 
 proxy_type_enums = StrEnum(
-    "ProxyTypeEnums", {x.upper(): x for x in ("http", "https", "sock")}
+    "ProxyTypeEnums", {x.upper(): x for x in ("http", "https", "socks5")}
 )
 
 anon_enums = StrEnum(
@@ -57,6 +57,7 @@ class ProxyUrl(CustomAllFeaturesMixin, SQLModel, table=True):
     __tablename__ = "proxy_url"
     __table_args__ = (
         PrimaryKeyConstraint("id", name="proxy_url_pkey"),
+        UniqueConstraint("url", "proxy_type"),
         # {"schema": "ranked_jobs"},
     )
 
@@ -72,26 +73,16 @@ class ProxyUrl(CustomAllFeaturesMixin, SQLModel, table=True):
     last_validated: datetime | None
 
 
-class ProxyList(SQLModel, table=False):
-    proxy_address_port: str = Field(..., alias="Proxy address:port")
-    proxy_type: Literal[
-        "HTTP",
-        "HTTP\n(ApacheTS)",
-        "HTTP\n(Mikrotik)",
-        "HTTP\n(Squid)",
-        "HTTP\n(Tinyproxy)",
-        "HTTP\nS",
-        "HTTP\nS\n(Mikrotik)",
-        "HTTP\nS\n(Squid)",
-        "SOCKS5",
-    ] = Field(..., alias="Proxy type")
-    anonymity: Literal["ANM", "HIA", "NOA"] = Field(..., alias="Anonymity*")
+class ProxyList(SQLModel):
+    proxy_ip_port: str = Field(..., alias="Proxy IP:port")
+    proxy_type: proxy_type_enums = Field(..., alias="Type")
+    anonymity: anon_enums = Field(..., alias="Anonymity*")
     country_city_region: str = Field(..., alias="Country (city/region)")
     hostname_org: str = Field(..., alias="Hostname/ORG")
     latency: float = Field(..., alias="Latency**")
     speed: Literal[""] = Field(..., alias="Speed***")
     uptime: Literal[""] = Field(..., alias="Uptime")
-    check_date_gmt03: str = Field(..., alias="Check date (GMT+03)")
+    checkdate_gmt03: str = Field(..., alias="Check date (GMT+03)")
 
     def get_proxy_url_instance(self):
         """
@@ -102,16 +93,16 @@ class ProxyList(SQLModel, table=False):
         """
         data = self.model_dump(
             include={
-                "proxy_address_port",
+                "proxy_ip_port",
                 "proxy_type",
                 "anonymity",
                 "country_city_region",
             }
         )
 
-        data["url"] = data.pop("proxy_address_port")
+        data["url"] = data.pop("proxy_ip_port")
         if "sock" in data.get("proxy_type").lower():
-            data["proxy_type"] = "sock"
+            data["proxy_type"] = "socks5"
         elif "http\ns" in data.get("proxy_type").lower():
             data["proxy_type"] = "https"
         else:
