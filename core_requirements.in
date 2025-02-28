@@ -1,0 +1,10 @@
+free-proxy
+geopy
+httpx
+httpx[socks]
+httpx-html
+html5lib
+loguru
+sqlalchemy_mixins
+sqlmodel
+sqlmodel-crud-utilities @ git+https://github.com/fsecada01/SQLModel-CRUD-Utilities@v0.0.1a1

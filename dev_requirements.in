@@ -1,0 +1,9 @@
+-c core_requirements.txt
+
+alembic
+black
+isort
+jupyterlab
+jupyterlab-code-formatter
+pre-commit
+ruff

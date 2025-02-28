@@ -1,4 +1,9 @@
-from backend.settings.consts import BASE_DIR
+from pathlib import Path
+
+try:
+    from backend.settings.consts import BASE_DIR
+except ImportError:
+    BASE_DIR = Path(__file__).parent.resolve()
 
 URLs = [  # for testing proxies
     "https://www.google.com",

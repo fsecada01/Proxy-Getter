@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import Session
 
-from backend.proxies.consts import sqlite_address
+from consts import sqlite_address
 
 engine = create_engine(sqlite_address)
 

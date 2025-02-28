@@ -5,10 +5,13 @@ import httpx
 from sqlalchemy import Row, update
 from sqlmodel import col, select
 
-from backend.logging import logger
-from backend.proxies.db import session_maker
-from backend.proxies.models import ProxyUrl
-from backend.utils import set_event_loop, windows_sys_event_loop_check
+try:
+    from backend.logging import logger
+except ImportError:
+    from loguru import logger
+
+from db import session_maker
+from models import ProxyUrl
 
 
 async def get_proxy_list(unvalidated: bool = True) -> list[Row]:
@@ -93,7 +96,6 @@ async def check_proxy_urls(unvalidated: bool = True):
     url = "https://www.google.com"
     # url = "https://www.yahoo.com"
 
-    windows_sys_event_loop_check()
     loop = asyncio.get_running_loop()
 
     tasks = list(
@@ -117,7 +119,4 @@ async def check_proxy_urls(unvalidated: bool = True):
 
 
 if __name__ == "__main__":
-    windows_sys_event_loop_check()
-    set_event_loop()
-
     asyncio.run(check_proxy_urls())

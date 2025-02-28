@@ -1,8 +1,7 @@
 import asyncio
 
-from backend.proxies.db import engine
-from backend.proxies.models import ProxyUrl
-from backend.utils import set_event_loop, windows_sys_event_loop_check
+from db import engine
+from models import ProxyUrl
 
 
 async def main():
@@ -14,7 +13,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    windows_sys_event_loop_check()
-    set_event_loop()
-
     asyncio.run(main())

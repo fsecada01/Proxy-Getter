@@ -5,12 +5,17 @@ from pprint import pformat
 
 from sqlmodel import select
 
-from backend.logging import logger
-from backend.proxies.db import session_maker
-from backend.proxies.models import ProxyList, ProxyUrl
-from backend.proxies.spys_one.consts import url_field
-from backend.proxies.spys_one.utils import get_data_from_rows, get_proxy_request
-from backend.utils import set_event_loop, windows_sys_event_loop_check
+from db import session_maker
+from models import ProxyList, ProxyUrl
+
+try:
+    from backend.logging import logger
+except ImportError:
+    from loguru import logger
+
+from utils import get_data_from_rows, get_proxy_request
+
+from .consts import url_field
 
 
 async def get_existing_urls():
@@ -100,7 +105,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    windows_sys_event_loop_check()
-    set_event_loop()
 
     asyncio.run(main())

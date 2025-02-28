@@ -7,8 +7,25 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy_mixins import AllFeaturesMixin
 from sqlmodel import Field, SQLModel, select
 
-from backend.logging import logger
-from backend.utils import chunked
+try:
+    from backend.logging import logger
+except ImportError:
+    from loguru import logger
+try:
+    from backend.utils import chunked
+except ImportError:
+
+    def chunked(iterable: list[Any], n: int):
+        """
+
+        Args:
+            iterable:
+            n:
+
+        Returns:
+
+        """
+        return [iterable[i : i + n] for i in range(0, len(iterable), n)]
 
 
 class CustomAllFeaturesMixin(AllFeaturesMixin):
