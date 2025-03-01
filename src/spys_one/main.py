@@ -1,19 +1,22 @@
 """A proxy caller for Spys proxy service"""
 
 import asyncio
+import json
+import re
+from datetime import date
 from pprint import pformat
 
+from bs4 import BeautifulSoup as soup
 from sqlmodel import select
 
 from db import session_maker
 from models import ProxyList, ProxyUrl
+from spys_one.utils import get_data_from_rows, get_proxy_request
 
 try:
     from backend.logging import logger
 except ImportError:
     from loguru import logger
-
-from utils import get_data_from_rows, get_proxy_request
 
 from .consts import url_field
 
@@ -42,23 +45,17 @@ async def main():
 
     """
     url = "https://spys.one/north-america-proxy/"
-    data = {
-        "xx00": "cbc05e084c6f04e0f75750f9b5a4b83a",
-        "xpp": 5,
-        "tldc": 1,
-        "xf1": 0,
-        "xf2": 0,
-        "xf5": 0,
-    }  # fifth parameter that controls page size
-    resp = await get_proxy_request(url=url, data=data)
+    content = await get_proxy_request(url=url)
+    html = soup(content, "html.parser")
 
-    rows = resp.html.find("tr[class*='spy1x']")
-
+    rows = html.find_all("tr", class_=re.compile(r"^spy1x"))
     logger.debug(len(rows))
 
     header, data = await get_data_from_rows(rows=rows)
 
     payload = list(map(lambda row: dict(zip(header, row)), data))
+    with open(f"raw_data_{date.today()}.json", "w") as f:
+        json.dump(payload, f, indent=4, default=str)
 
     data = []
     exist_urls = await get_existing_urls()

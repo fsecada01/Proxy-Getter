@@ -1,10 +1,10 @@
 free-proxy
 geopy
+html5lib
 httpx
 httpx[socks]
-httpx-html
-html5lib
 loguru
+playwright
 sqlalchemy_mixins
 sqlmodel
 sqlmodel-crud-utilities @ git+https://github.com/fsecada01/SQLModel-CRUD-Utilities@v0.0.1a1
