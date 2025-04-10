@@ -3,7 +3,5 @@
 alembic
 black
 isort
-jupyterlab
-jupyterlab-code-formatter
 pre-commit
 ruff
