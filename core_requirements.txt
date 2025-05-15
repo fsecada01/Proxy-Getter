@@ -6,12 +6,12 @@ annotated-types==0.7.0
     #   sqlmodel-crud-utilities
 anyio==4.9.0
     # via httpx
-certifi==2025.1.31
+certifi==2025.4.26
     # via
     #   httpcore
     #   httpx
     #   requests
-charset-normalizer==3.4.1
+charset-normalizer==3.4.2
     # via requests
 colorama==0.4.6
     # via
@@ -28,11 +28,11 @@ greenlet==3.1.1
     #   playwright
     #   sqlalchemy
     #   sqlmodel-crud-utilities
-h11==0.14.0
+h11==0.16.0
     # via httpcore
 html5lib==1.1
     # via -r core_requirements.in
-httpcore==1.0.7
+httpcore==1.0.9
     # via httpx
 httpx==0.28.1
     # via -r core_requirements.in
@@ -45,9 +45,9 @@ loguru==0.7.3
     # via
     #   -r core_requirements.in
     #   sqlmodel-crud-utilities
-lxml==5.3.2
+lxml==5.4.0
     # via free-proxy
-playwright==1.51.0
+playwright==1.52.0
     # via -r core_requirements.in
 pydantic==2.11.3
     # via
@@ -57,7 +57,7 @@ pydantic-core==2.33.1
     # via
     #   pydantic
     #   sqlmodel-crud-utilities
-pyee==12.1.1
+pyee==13.0.0
     # via playwright
 python-dateutil==2.9.0.post0
     # via sqlmodel-crud-utilities
