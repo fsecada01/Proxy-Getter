@@ -71,7 +71,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-version = "1.0.0b0"
+version = "0.0.1b1"
 dependencies = [
     "free-proxy>=1.1.3",
     "geopy>=2.4.1",
