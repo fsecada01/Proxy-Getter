@@ -7,4 +7,4 @@ loguru
 playwright
 sqlalchemy_mixins
 sqlmodel
-sqlmodel-crud-utilities
+sqlmodel-crud-utilities>=0.1.0
