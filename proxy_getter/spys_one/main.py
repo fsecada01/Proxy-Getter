@@ -7,10 +7,11 @@ from datetime import date
 from pprint import pformat
 
 from bs4 import BeautifulSoup as soup
-from db import session_maker
-from models import ProxyList, ProxyUrl
-from spys_one.utils import get_data_from_rows, get_proxy_request
 from sqlmodel import select
+
+from ..db import session_maker
+from ..models import ProxyList, ProxyUrl
+from .utils import get_data_from_rows, get_proxy_request
 
 try:
     from backend.logging import logger
@@ -85,8 +86,7 @@ async def main():
                     ProxyUrl.create(inst)
                 except Exception as e:
                     logger.error(
-                        f"Failed to write entry. See here: "
-                        f"{type(e), e, e.args}"
+                        f"Failed to write entry. See here: {type(e), e, e.args}"
                     )
                     failed_insts.append(inst)
 
@@ -101,5 +101,4 @@ async def main():
 
 
 if __name__ == "__main__":
-
     asyncio.run(main())

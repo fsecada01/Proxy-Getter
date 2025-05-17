@@ -10,8 +10,8 @@ try:
 except ImportError:
     from loguru import logger
 
-from db import session_maker
-from models import ProxyUrl
+from .db import session_maker
+from .models import ProxyUrl
 
 
 async def get_proxy_list(unvalidated: bool = True) -> list[Row]:
@@ -69,8 +69,7 @@ async def check_proxy_urls(unvalidated: bool = True):
     def _make_request(url: str, proxy_url: str):
         return_obj = None
         logger.info(
-            f"Going to test proxy address {proxy_url} against URL {url} "
-            f"now."
+            f"Going to test proxy address {proxy_url} against URL {url} now."
         )
         try:
             proxies = {"any://": httpx.HTTPTransport(proxy=proxy_url)}

@@ -94,5 +94,7 @@ dev = [
     "ruff>=0.11.10",
 ]
 
-[tool.setuptools]
-packages = ['proxy_getter']
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["proxy_getter"]
+name_spaces = false
