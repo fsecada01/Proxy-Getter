@@ -97,4 +97,4 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["proxy_getter"]
-name_spaces = false
+namespaces = false
