@@ -94,4 +94,6 @@ dev = [
     "ruff>=0.11.10",
 ]
 
-
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["proxy_getter", "proxy_getter.spys_one"]
