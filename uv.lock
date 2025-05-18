@@ -436,7 +436,7 @@ wheels = [
 [[package]]
 name = "proxy-getter"
 version = "0.0.1b1"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "free-proxy" },
     { name = "geopy" },

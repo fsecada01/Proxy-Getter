@@ -60,6 +60,10 @@ line_length = 80
 #include_trailing_comma = true
 #force_grid_wrap = 0
 
+[build-system]
+requires = ['setuptools']
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "proxy_getter"
 authors = [
