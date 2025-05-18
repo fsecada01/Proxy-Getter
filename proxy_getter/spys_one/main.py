@@ -18,7 +18,7 @@ try:
 except ImportError:
     from loguru import logger
 
-from .consts import url_field
+from consts import url_field
 
 
 async def get_existing_urls():

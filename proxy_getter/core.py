@@ -10,8 +10,8 @@ try:
 except ImportError:
     from loguru import logger
 
-from .db import session_maker
-from .models import ProxyUrl
+from db import session_maker
+from models import ProxyUrl
 
 
 async def get_proxy_list(unvalidated: bool = True) -> list[Row]:

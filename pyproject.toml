@@ -95,6 +95,4 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ['proxy_getter']
-namespaces = false
+where = ["proxy_getter"]
