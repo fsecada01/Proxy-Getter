@@ -7,10 +7,11 @@ from datetime import date
 from pprint import pformat
 
 from bs4 import BeautifulSoup as soup
+from sqlmodel import select
+
 from db import session_maker
 from models import ProxyList, ProxyUrl
 from spys_one.utils import get_data_from_rows, get_proxy_request
-from sqlmodel import select
 
 try:
     from backend.logging import logger

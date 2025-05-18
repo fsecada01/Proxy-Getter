@@ -94,6 +94,4 @@ dev = [
     "ruff>=0.11.10",
 ]
 
-[tool.setuptools]
-package-dir = { "" = "proxy_getter" }
 
