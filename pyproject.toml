@@ -61,8 +61,8 @@ line_length = 80
 #force_grid_wrap = 0
 
 [build-system]
-requires = ['setuptools']
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"] # <-- Changed to hatchling
+build-backend = "hatchling.build" # <-- Changed to hatchling
 
 [project]
 name = "proxy_getter"
@@ -98,6 +98,17 @@ dev = [
     "ruff>=0.11.10",
 ]
 
-[tool.setuptools]
-package-dir = { "" = "src" }
-packages = ["proxy_getter", "proxy_getter.spys_one"]
+# Removed the [tool.setuptools] sections
+
+[tool.hatch.build]
+# Hatchling defaults to finding packages in 'src' or the project root.
+# Since your package is directly in the root ('proxy_getter/'),
+# the default configuration is often sufficient.
+# If your package was in 'src/proxy_getter', you would use:
+# directory = "src"
+
+# If you need to explicitly include specific packages or exclude others,
+# you can use the `include` and `exclude` options, similar to setuptools find,
+# but often not necessary if your structure is standard.
+# For example, to explicitly include the proxy_getter package and its subpackages:
+# include = ["proxy_getter"]
