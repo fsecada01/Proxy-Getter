@@ -1,7 +1,8 @@
-from consts import sqlite_address
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import Session
+
+from proxy_getter.consts import sqlite_address
 
 engine = create_engine(sqlite_address)
 
