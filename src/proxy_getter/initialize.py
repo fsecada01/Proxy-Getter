@@ -1,8 +1,7 @@
 import asyncio
 
-from models import ProxyUrl
-
 from proxy_getter.db import engine
+from proxy_getter.models import ProxyUrl
 
 
 async def main():
