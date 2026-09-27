@@ -1,4 +1,5 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import httpx
@@ -12,6 +13,8 @@ except ImportError:
 
 from proxy_getter.db import session_maker
 from proxy_getter.models import ProxyUrl
+
+CHECK_WORKERS = 64
 
 
 async def get_proxy_list(unvalidated: bool = True) -> list[Row]:
@@ -72,16 +75,11 @@ async def check_proxy_urls(unvalidated: bool = True):
             f"Going to test proxy address {proxy_url} against URL {url} now."
         )
         try:
-            proxies = {"any://": httpx.HTTPTransport(proxy=proxy_url)}
-            client = httpx.Client(
-                mounts=proxies,
-                verify=False if "https" not in proxy_url else True,
-            )
-            r = client.head(
-                url=url,
-                timeout=60.0,
-                follow_redirects=True,
-            )
+            # `proxy=` routes every request through the proxy; the old
+            # "any://" mount matched nothing, so requests went direct and
+            # every proxy "validated".
+            with httpx.Client(proxy=proxy_url, timeout=15.0) as client:
+                r = client.head(url=url, follow_redirects=True)
             if r.status_code == 200:
                 return_obj = proxy_url
 
@@ -97,18 +95,23 @@ async def check_proxy_urls(unvalidated: bool = True):
 
     loop = asyncio.get_running_loop()
 
-    tasks = list(
-        map(
-            lambda proxy: loop.run_in_executor(None, _make_request, url, proxy),
-            proxy_urls,
+    # Most free proxies are dead and only fail at the timeout, so check many
+    # at once; the default executor (~32 threads) takes ~40 min for 3,000.
+    with ThreadPoolExecutor(max_workers=CHECK_WORKERS) as pool:
+        tasks = list(
+            map(
+                lambda proxy: loop.run_in_executor(
+                    pool, _make_request, url, proxy
+                ),
+                proxy_urls,
+            )
         )
-    )
 
-    searched_urls = [row.url for row in rows]
+        searched_urls = [row.url for row in rows]
 
-    await update_proxy_urls(urls=searched_urls, values={"searched": True})
+        await update_proxy_urls(urls=searched_urls, values={"searched": True})
 
-    proxy_urls = await asyncio.gather(*tasks)
+        proxy_urls = await asyncio.gather(*tasks)
 
     urls = [x.split("//")[1] for x in proxy_urls if x]
 
