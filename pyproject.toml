@@ -66,6 +66,7 @@ build-backend = "hatchling.build" # <-- Changed to hatchling
 
 [project]
 name = "proxy_getter"
+requires-python = ">=3.10"
 authors = [
     { name = "Francis Secada", email = "francis.secada@gmail.com" }
 ]

@@ -2,59 +2,68 @@
 
 import importlib
 import sys
-import types
 from pathlib import Path
 
 import pytest
 
+import proxy_getter
+
 HOST_MODULES = ("backend", "backend.settings", "backend.settings.consts")
 
 
-class _BrokenSettings(types.ModuleType):
-    """A host settings module whose import-time validation fails."""
-
-    def __getattr__(self, name):
-        raise RuntimeError("SECRET_KEY missing")
+def _write_host(root: Path, consts_source: str) -> Path:
+    """Create a real ``backend.settings.consts`` package under ``root``."""
+    settings = root / "backend" / "settings"
+    settings.mkdir(parents=True)
+    (root / "backend" / "__init__.py").write_text("")
+    (settings / "__init__.py").write_text("")
+    (settings / "consts.py").write_text(consts_source)
+    return root
 
 
 @pytest.fixture
 def load_consts(monkeypatch):
-    """Re-import proxy_getter.consts under a given env and host app."""
+    """Re-import proxy_getter.consts under a given env and host app.
 
-    def load(env=None, host=None):
+    monkeypatch restores sys.modules, sys.path and the package's
+    ``consts`` attribute afterwards, so no test sees another's module.
+    """
+
+    def load(env=None, host_root=None):
         monkeypatch.delenv("PROXY_DB_PATH", raising=False)
         if env is not None:
             monkeypatch.setenv("PROXY_DB_PATH", env)
         for name in (*HOST_MODULES, "proxy_getter.consts"):
             monkeypatch.delitem(sys.modules, name, raising=False)
-        if host is not None:
-            for name in HOST_MODULES[:-1]:
-                package = types.ModuleType(name)
-                package.__path__ = []
-                monkeypatch.setitem(sys.modules, name, package)
-            monkeypatch.setitem(sys.modules, HOST_MODULES[-1], host)
+        monkeypatch.delattr(proxy_getter, "consts", raising=False)
+        if host_root is not None:
+            monkeypatch.syspath_prepend(str(host_root))
+        importlib.invalidate_caches()
         return importlib.import_module("proxy_getter.consts")
 
     return load
 
 
-def _host(base_dir):
-    module = types.ModuleType(HOST_MODULES[-1])
-    module.BASE_DIR = base_dir
-    return module
-
-
 def test_host_str_base_dir(load_consts, tmp_path):
     # both known hosts define BASE_DIR as a str
-    consts = load_consts(host=_host(str(tmp_path)))
+    base = tmp_path / "app"
+    host = _write_host(tmp_path / "host", f"BASE_DIR = {str(base)!r}\n")
 
-    assert consts.DB_PATH == tmp_path.resolve() / "proxy_urls.db"
+    consts = load_consts(host_root=host)
+
+    assert consts.DB_PATH == base.resolve() / "proxy_urls.db"
 
 
 def test_host_path_base_dir(load_consts, tmp_path):
-    consts = load_consts(host=_host(tmp_path))
+    base = tmp_path / "app"
+    host = _write_host(
+        tmp_path / "host",
+        f"from pathlib import Path\nBASE_DIR = Path({str(base)!r})\n",
+    )
 
-    assert consts.DB_PATH == tmp_path.resolve() / "proxy_urls.db"
+    consts = load_consts(host_root=host)
+
+    assert consts.DB_PATH == base.resolve() / "proxy_urls.db"
 
 
 def test_no_host_uses_package_dir(load_consts):
@@ -66,12 +75,31 @@ def test_no_host_uses_package_dir(load_consts):
 
 
 def test_env_wins_and_skips_host_settings(load_consts, tmp_path):
+    # e.g. leads_ai without SECRET_KEY: its settings raise on import
+    host = _write_host(tmp_path / "host", "raise RuntimeError('no key')\n")
     db = tmp_path / "db" / "proxies.db"
 
-    consts = load_consts(env=str(db), host=_BrokenSettings("broken"))
+    consts = load_consts(env=str(db), host_root=host)
 
     assert consts.DB_PATH == db.resolve()
     assert consts.sqlite_address == f"sqlite:///{db.resolve()}"
+
+
+def test_failing_host_settings_propagate_without_env(load_consts, tmp_path):
+    host = _write_host(tmp_path / "host", "raise RuntimeError('no key')\n")
+
+    with pytest.raises(RuntimeError, match="no key"):
+        load_consts(host_root=host)
+
+
+def test_host_missing_dependency_is_not_treated_as_no_host(
+    load_consts, tmp_path
+):
+    # must not silently fall back to the package directory
+    host = _write_host(tmp_path / "host", "import not_installed_dep\n")
+
+    with pytest.raises(ModuleNotFoundError, match="not_installed_dep"):
+        load_consts(host_root=host)
 
 
 def test_env_relative_and_home(load_consts, monkeypatch, tmp_path):
@@ -82,3 +110,12 @@ def test_env_relative_and_home(load_consts, monkeypatch, tmp_path):
 
     home = load_consts(env="~/p.db").DB_PATH
     assert home == (Path.home() / "p.db").resolve()
+
+
+def test_base_dir_is_deprecated_but_available(load_consts):
+    consts = load_consts()
+
+    with pytest.warns(DeprecationWarning, match="DB_PATH"):
+        base_dir = consts.BASE_DIR
+
+    assert base_dir == consts.DB_PATH.parent
