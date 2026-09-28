@@ -7,9 +7,10 @@ from proxy_getter.models import ProxyUrl
 async def main():
     """
     The main function to initialize the whole `proxies` application. The
-    function writes the SQL tables to the SQLite instance.
+    function writes the SQL tables to the SQLite instance, leaving an
+    existing table alone.
     """
-    ProxyUrl.__table__.create(engine)
+    ProxyUrl.__table__.create(engine, checkfirst=True)
 
 
 if __name__ == "__main__":
