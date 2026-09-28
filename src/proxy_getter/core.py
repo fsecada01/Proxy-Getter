@@ -13,6 +13,10 @@ except ImportError:
 from proxy_getter.db import session_maker
 from proxy_getter.models import ProxyUrl
 
+CHECK_CONCURRENCY = 200
+CHECK_TIMEOUT = 10.0  # per connect/read/write phase
+CHECK_DEADLINE = 20.0  # whole check, seconds
+
 
 async def get_proxy_list(unvalidated: bool = True) -> list[Row]:
     """
@@ -66,49 +70,40 @@ async def check_proxy_urls(unvalidated: bool = True):
 
     proxy_urls = [f"{row.proxy_type.value}://{row.url}" for row in rows]
 
-    def _make_request(url: str, proxy_url: str):
-        return_obj = None
-        logger.info(
-            f"Going to test proxy address {proxy_url} against URL {url} now."
-        )
-        try:
-            proxies = {"any://": httpx.HTTPTransport(proxy=proxy_url)}
-            client = httpx.Client(
-                mounts=proxies,
-                verify=False if "https" not in proxy_url else True,
-            )
-            r = client.head(
-                url=url,
-                timeout=60.0,
-                follow_redirects=True,
-            )
-            if r.status_code == 200:
-                return_obj = proxy_url
-
-        except Exception as e:
-            logger.debug(
-                f"There was an error when making a HEAD request. See here: {type(e), e, e.args}"
-            )
-
-        return return_obj
-
     url = "https://www.google.com"
     # url = "https://www.yahoo.com"
 
-    loop = asyncio.get_running_loop()
+    # Most free proxies are dead or crawl. httpx's timeout is per phase, so
+    # a proxy that trickles bytes can run for minutes; wait_for enforces a
+    # wall-clock deadline per check, and the semaphore caps sockets in use.
+    sem = asyncio.Semaphore(CHECK_CONCURRENCY)
 
-    tasks = list(
-        map(
-            lambda proxy: loop.run_in_executor(None, _make_request, url, proxy),
-            proxy_urls,
-        )
-    )
+    async def _make_request(proxy_url: str) -> str | None:
+        async with sem:
+            logger.debug(f"Testing proxy {proxy_url} against {url}")
+            try:
+                # `proxy=` routes every request through the proxy; the old
+                # "any://" mount matched nothing, so requests went direct
+                # and every proxy "validated".
+                async with httpx.AsyncClient(
+                    proxy=proxy_url, timeout=CHECK_TIMEOUT
+                ) as client:
+                    r = await asyncio.wait_for(
+                        client.head(url=url, follow_redirects=True),
+                        CHECK_DEADLINE,
+                    )
+                if r.status_code == 200:
+                    return proxy_url
+            except Exception as e:
+                logger.debug(f"Proxy {proxy_url} failed: {type(e), e}")
+
+        return None
 
     searched_urls = [row.url for row in rows]
 
     await update_proxy_urls(urls=searched_urls, values={"searched": True})
 
-    proxy_urls = await asyncio.gather(*tasks)
+    proxy_urls = await asyncio.gather(*map(_make_request, proxy_urls))
 
     urls = [x.split("//")[1] for x in proxy_urls if x]
 
