@@ -19,7 +19,7 @@ URLs = [  # for testing proxies
 # "~" is expanded and a relative path is made absolute against the working
 # directory at import, so every process agrees on one file.
 DB_PATH = (
-    Path(os.environ.get("PROXY_DB_PATH") or BASE_DIR / "proxy_urls.db")
+    Path(os.environ.get("PROXY_DB_PATH") or Path(BASE_DIR) / "proxy_urls.db")
     .expanduser()
     .resolve()
 )
